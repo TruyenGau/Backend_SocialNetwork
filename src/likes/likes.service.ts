@@ -115,7 +115,7 @@ export class LikesService {
 
       // 2. Nếu update thành công → gọi ML server training lại
       try {
-        await axios.post('http://127.0.0.1:5000/train');
+        await axios.post('http://36.50.135.249:5000/train');
         console.log('🔥 ML model retrained after user update.');
       } catch (err) {
         console.error('❌ ML training failed:', err.message);
@@ -186,7 +186,7 @@ export class LikesService {
 
       // 2. Nếu update thành công → gọi ML server training lại
       try {
-        await axios.post('http://127.0.0.1:5000/train');
+        await axios.post('http://36.50.135.249:5000/train');
         console.log('🔥 ML model retrained after user update.');
       } catch (err) {
         console.error('❌ ML training failed:', err.message);

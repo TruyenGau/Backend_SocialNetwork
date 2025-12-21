@@ -51,7 +51,7 @@ export class PostsService {
     } = createPostDto;
 
     try {
-      const aiRes = await axios.post('http://127.0.0.1:5000/moderation', {
+      const aiRes = await axios.post('http://36.50.135.249:5000/moderation', {
         text: content,
       });
 
