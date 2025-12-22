@@ -1,4 +1,4 @@
-name: Next Deployment
+name: Deployment NestJS
 
 on:
   push:
@@ -7,20 +7,29 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-    - name: Deploy using ssh
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.HOST }}
-        username: ${{ secrets.USERNAME }}
-        password: ${{ secrets.PASSWORD }}
-        port: 22
-        script: |
-          cd /home//Backend_SocialNetwork
-          git fetch origin
-          git pull
-          npm install
-          npm run build
-          pm2 reload backend-social
-            
-          
+      - name: Deploy NestJS backend using SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: 22
+          script: |
+            echo "👉 Go to backend folder"
+            cd /home/Backend_SocialNetwork
+
+            echo "👉 Pull latest code"
+            git pull origin master
+
+            echo "👉 Install dependencies"
+            npm install
+
+            echo "👉 Build NestJS"
+            npm run build
+
+            echo "👉 Restart backend with PM2"
+            pm2 restart nest-backend || pm2 start dist/main.js --name nest-backend
+
+            pm2 save
