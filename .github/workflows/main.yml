@@ -30,6 +30,6 @@ jobs:
             npm run build
 
             echo "👉 Restart backend with PM2"
-            pm2 restart nest-backend || pm2 start dist/main.js --name nest-backend
+            pm2 restart backend-social || pm2 start dist/main.js --name backend-social
 
             pm2 save
