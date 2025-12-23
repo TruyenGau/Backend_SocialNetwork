@@ -574,6 +574,7 @@ export class CommunitiesService {
       .find({
         name: regex,
         isDeleted: { $ne: true },
+        visibility: 'PUBLIC', // ✅ chỉ search group public
       })
       .select('name avatar membersCount members description')
       .limit(10)
