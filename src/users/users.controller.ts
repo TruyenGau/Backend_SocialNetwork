@@ -63,7 +63,7 @@ export class UsersController {
   remove(@Param('id') id: string, @User() user: IUser) {
     return this.usersService.remove(id, user);
   }
-
+  @ResponseMessage('Get today birthday users')
   @SkipCheckPermission()
   @Public()
   @Get('birthday/today')

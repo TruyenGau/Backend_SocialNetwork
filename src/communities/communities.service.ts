@@ -561,4 +561,30 @@ export class CommunitiesService {
 
     return { message: 'Đã bỏ pin bài viết' };
   }
+
+  async searchByName(keyword: string, userId: string) {
+    if (!keyword || keyword.trim().length < 2) {
+      return [];
+    }
+
+    const regex = new RegExp(keyword.trim(), 'i');
+    const uid = new mongoose.Types.ObjectId(userId);
+
+    const communities = await this.communityModel
+      .find({
+        name: regex,
+        isDeleted: { $ne: true },
+      })
+      .select('name avatar membersCount members description')
+      .limit(10)
+      .lean();
+
+    return communities.map((c) => ({
+      _id: c._id,
+      name: c.name,
+      avatar: c.avatar,
+      membersCount: c.membersCount || 0,
+      isJoined: c.members?.some((m: any) => m.toString() === uid.toString()),
+    }));
+  }
 }

@@ -918,4 +918,33 @@ export class PostsService {
     const intersection = [...wordsA].filter((w) => wordsB.has(w));
     return intersection.length / Math.max(wordsA.size, wordsB.size);
   }
+
+  async globalSearch(keyword: string) {
+    if (!keyword || keyword.trim() === '') {
+      return { users: [], posts: [] };
+    }
+
+    // 👤 SEARCH USER BY NAME
+    const users = await this.userModel
+      .find({
+        name: { $regex: keyword, $options: 'i' },
+        isDeleted: { $ne: true },
+        block: { $ne: true },
+      })
+      .select('_id name avatar')
+      .limit(5);
+
+    // 📝 SEARCH POST BY CONTENT
+    const posts = await this.postModel
+      .find({
+        content: { $regex: keyword, $options: 'i' },
+        isDeleted: { $ne: true },
+        status: 'APPROVED',
+      })
+      .populate('userId', 'name avatar')
+      .sort({ createdAt: -1 })
+      .limit(5);
+
+    return { users, posts };
+  }
 }

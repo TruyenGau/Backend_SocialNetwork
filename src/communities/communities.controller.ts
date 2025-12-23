@@ -201,4 +201,11 @@ export class CommunitiesController {
   ) {
     return this.communitiesService.unpinPost(communityId, postId, user);
   }
+
+  @SkipCheckPermission()
+  @ResponseMessage('Search community by name')
+  @Get('search/by-name')
+  searchCommunity(@Query('q') q: string, @User() user: IUser) {
+    return this.communitiesService.searchByName(q, user._id);
+  }
 }

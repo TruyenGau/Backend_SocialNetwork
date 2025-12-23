@@ -52,16 +52,19 @@ export class FollowService {
       },
       { upsert: true },
     );
+    let check = false;
 
     // 2. Nếu update thành công → gọi ML server training lại
     try {
       await axios.post('http://36.50.135.249:5000/train');
+      check = true;
       console.log('🔥 ML model retrained after user update.');
     } catch (err) {
       console.error('❌ ML training failed:', err.message);
     }
+    console.log(check);
 
-    return { message: 'Follow thành công' };
+    return { message: 'Follow thành công', check: check };
   }
 
   // UNFOLLOW
@@ -167,6 +170,7 @@ export class FollowService {
 
     try {
       const res = await axios.get(apiUrl, { timeout: 2000 });
+      console.log('🤖 [ML] Raw recommend list:', res.data?.recommend);
       return res.data?.recommend ?? [];
     } catch (e) {
       console.error('ML API Error:', e.message);

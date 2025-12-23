@@ -152,4 +152,12 @@ export class PostsController {
   createBirthdayPost(@Body() body: CreateBirthdayPostDto, @User() user: IUser) {
     return this.postsService.createBirthdayPost(body, user);
   }
+
+  @ResponseMessage('GLOBAL SEARCH')
+  @SkipCheckPermission()
+  @Get('global/search')
+  @Public()
+  globalSearch(@Query('q') q: string) {
+    return this.postsService.globalSearch(q);
+  }
 }
