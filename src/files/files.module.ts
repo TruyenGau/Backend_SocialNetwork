@@ -9,10 +9,10 @@ import { CloudinaryProvider } from 'src/cloudinary/cloudinary.config';
 @Module({
   controllers: [FilesController],
   providers: [FilesService, ModerationService, CloudinaryProvider],
-  // imports: [
-  //   MulterModule.registerAsync({
-  //     useClass: MulterConfigService,
-  //   }),
-  // ],
+  imports: [
+    MulterModule.registerAsync({
+      useClass: MulterConfigService,
+    }),
+  ],
 })
 export class FilesModule {}

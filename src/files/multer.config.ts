@@ -10,34 +10,29 @@ import { Request } from 'express';
 
 @Injectable()
 export class MulterConfigService implements MulterOptionsFactory {
-  getRootPath = () => process.cwd();
+  getRootPath = () => '/home/uploads';
 
   ensureExistsSync(dir: string) {
     try {
       fs.mkdirSync(dir, { recursive: true });
-    } catch (e) {
-      // log nếu cần
-      // console.error(e);
-    }
+    } catch {}
   }
 
   createMulterOptions(): MulterModuleOptions {
     return {
       storage: diskStorage({
         destination: (req: Request, file, cb) => {
-          const folder = (req.headers?.folder_type as string) ?? 'default';
+          const folder = (req.headers?.folder_type as string) ?? 'misc';
           const isVideo = file.mimetype.startsWith('video/');
 
-          // Tạo trước 2 subfolder: images và videos dưới public/<folder>
-          const baseFolder = path.join(this.getRootPath(), 'public', folder);
+          const baseFolder = path.join(this.getRootPath(), folder);
           const imagesDir = path.join(baseFolder, 'images');
           const videosDir = path.join(baseFolder, 'videos');
+
           this.ensureExistsSync(imagesDir);
           this.ensureExistsSync(videosDir);
 
-          // Đích đến theo loại file
-          const dest = isVideo ? videosDir : imagesDir;
-          cb(null, dest);
+          cb(null, isVideo ? videosDir : imagesDir);
         },
 
         filename: (req, file, cb) => {
@@ -51,7 +46,7 @@ export class MulterConfigService implements MulterOptionsFactory {
 
       limits: {
         files: 20,
-        fileSize: 20 * 1024 * 1024, // 20MB/file
+        fileSize: 20 * 1024 * 1024,
       },
 
       fileFilter: (req, file, cb) => {
