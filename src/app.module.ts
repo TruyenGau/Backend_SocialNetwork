@@ -24,6 +24,7 @@ import { CommunitiesModule } from './communities/communities.module';
 import { ChatModule } from './chat/chat.module';
 import { StoriesModule } from './stories/stories.module';
 import { ReportsModule } from './reports/reports.module';
+import { PollsModule } from './polls/polls.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { ReportsModule } from './reports/reports.module';
     ChatModule,
     StoriesModule,
     ReportsModule,
+    PollsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
