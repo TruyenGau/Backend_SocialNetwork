@@ -100,14 +100,14 @@ export class FilesController {
           };
         }
 
-        images.push(`/uploads/${folderType}/images/${file.filename}`);
+        images.push(`uploads/${folderType}/images/${file.filename}`);
       }
 
       // ======================
       // VIDEO
       // ======================
       else if (isVideo) {
-        videos.push(`/uploads/${folderType}/videos/${file.filename}`);
+        videos.push(`uploads/${folderType}/videos/${file.filename}`);
       }
 
       // ======================
