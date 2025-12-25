@@ -161,14 +161,29 @@ import { Injectable } from '@nestjs/common';
 import { ImageAnnotatorClient } from '@google-cloud/vision';
 import { google } from '@google-cloud/vision/build/protos/protos';
 import * as path from 'path';
+import { ConfigService } from '@nestjs/config';
 
 const { Likelihood } = google.cloud.vision.v1;
 
 @Injectable()
 export class ModerationService {
-  private client = new ImageAnnotatorClient({
-    keyFilename: path.join(process.cwd(), 'google-vision-key.json'),
-  });
+  private client: ImageAnnotatorClient;
+
+  constructor(private readonly configService: ConfigService) {
+    const rawCreds = this.configService.get<string>(
+      'GOOGLE_VISION_CREDENTIALS',
+    );
+
+    if (!rawCreds) {
+      throw new Error('Missing GOOGLE_VISION_CREDENTIALS env');
+    }
+
+    const credentials = JSON.parse(rawCreds);
+
+    this.client = new ImageAnnotatorClient({
+      credentials,
+    });
+  }
 
   // =========================
   // Helper: normalize Likelihood
