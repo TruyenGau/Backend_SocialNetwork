@@ -181,4 +181,9 @@ export class PostsController {
   ) {
     return this.postsService.reviewPost(id, dto, admin);
   }
+  @SkipCheckPermission()
+  @Get('admin/stats/ai-rate')
+  getAiRate(@Query('type') type: 'day' | 'week') {
+    return this.postsService.aiBlockedRateByTime(type);
+  }
 }

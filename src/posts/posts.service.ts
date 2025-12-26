@@ -1019,4 +1019,38 @@ export class PostsService {
 
     return { success: true };
   }
+
+  // posts.service.ts
+  async aiBlockedRateByTime(type: 'day' | 'week') {
+    const groupFormat =
+      type === 'day'
+        ? { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }
+        : { $isoWeek: '$createdAt' };
+
+    return this.postModel.aggregate([
+      {
+        $group: {
+          _id: groupFormat,
+          total: { $sum: 1 },
+          aiBlocked: {
+            $sum: {
+              $cond: [{ $eq: ['$aiFlag', true] }, 1, 0],
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          time: '$_id',
+          percent: {
+            $round: [
+              { $multiply: [{ $divide: ['$aiBlocked', '$total'] }, 100] },
+              2,
+            ],
+          },
+        },
+      },
+      { $sort: { time: 1 } },
+    ]);
+  }
 }
