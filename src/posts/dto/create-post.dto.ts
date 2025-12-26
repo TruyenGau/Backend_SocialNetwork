@@ -2,6 +2,7 @@ import { Optional } from '@nestjs/common';
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsMongoId,
   IsNotEmpty,
   IsOptional,
@@ -34,4 +35,12 @@ export class CreatePostDto {
   @IsOptional()
   @IsMongoId({ message: 'communityId phải là MongoId' })
   communityId?: mongoose.Schema.Types.ObjectId;
+
+  @IsOptional()
+  @IsBoolean()
+  aiFlag?: boolean;
+
+  @IsOptional()
+  @IsString()
+  aiReason?: string;
 }

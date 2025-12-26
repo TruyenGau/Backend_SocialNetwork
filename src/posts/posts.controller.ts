@@ -21,6 +21,7 @@ import {
 } from 'src/auth/decorator/customize';
 import { IUser } from 'src/users/users.interface';
 import { CreateBirthdayPostDto } from './dto/create-birthday-post.dto';
+import { ReviewPostDto } from './dto/review-post.dto';
 
 @Controller('posts')
 export class PostsController {
@@ -54,7 +55,7 @@ export class PostsController {
     return this.postsService.findAllPost(+currentPage, +limit, qs);
   }
   @SkipCheckPermission()
-  @ResponseMessage('Fetch list post with group ')
+  @ResponseMessage('Fetch list post with groupid')
   @Get('group/:groupId')
   findAllWithGroup(
     @Query('current') currentPage: string,
@@ -159,5 +160,25 @@ export class PostsController {
   @Public()
   globalSearch(@Query('q') q: string) {
     return this.postsService.globalSearch(q);
+  }
+
+  ////check admin + AI
+  // posts.controller.ts
+  @SkipCheckPermission()
+  @Get('admin/pending')
+  @ResponseMessage('Fetch pending posts')
+  findPendingPosts() {
+    return this.postsService.findPendingPosts();
+  }
+
+  @SkipCheckPermission()
+  @Patch('admin/:id/review')
+  @ResponseMessage('Review post')
+  reviewPost(
+    @Param('id') id: string,
+    @Body() dto: ReviewPostDto,
+    @User() admin: IUser,
+  ) {
+    return this.postsService.reviewPost(id, dto, admin);
   }
 }

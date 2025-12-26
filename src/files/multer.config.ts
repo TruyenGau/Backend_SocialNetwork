@@ -11,6 +11,7 @@ import { Request } from 'express';
 @Injectable()
 export class MulterConfigService implements MulterOptionsFactory {
   getRootPath = () => '/home/uploads';
+  // getRootPath = () => process.cwd();
 
   ensureExistsSync(dir: string) {
     try {

@@ -23,6 +23,7 @@ import {
 import { Follow, FollowDocument } from 'src/follows/schemas/follow.schemas';
 import axios from 'axios';
 import { CreateBirthdayPostDto } from './dto/create-birthday-post.dto';
+import { ReviewPostDto } from './dto/review-post.dto';
 
 @Injectable()
 export class PostsService {
@@ -48,38 +49,58 @@ export class PostsService {
       communityId,
       images = [],
       videos = [],
+
+      // 🔥 NHẬN AI FLAG TỪ ẢNH
+      aiFlag: imageAiFlag,
+      aiReason: imageAiReason,
     } = createPostDto;
+
+    const TOXIC_THRESHOLD = 0.55;
+
+    // =========================
+    // 1. AI MODERATION
+    // =========================
+    let toxicScore = 0;
+    let aiFlag = false;
+    let aiReason: string | null = null;
+    let status: 'APPROVED' | 'PENDING' = 'APPROVED';
 
     try {
       const aiRes = await axios.post('http://36.50.135.249:5000/moderation', {
         text: content,
       });
 
-      const toxicScore: number = aiRes.data?.toxic_score ?? 0;
+      toxicScore = aiRes.data?.toxic_score ?? 0;
       const label: string = aiRes.data?.label;
       const topic: string = aiRes.data?.topic;
 
-      const threshold = 0.55;
+      if (label === 'toxic' || toxicScore >= TOXIC_THRESHOLD) {
+        status = 'PENDING';
+        aiFlag = true;
+        aiReason = 'AI detected potentially toxic content';
+      }
+      // =========================
+      // 🔥 GỘP AI IMAGE
+      // =========================
+      if (imageAiFlag) {
+        aiFlag = true;
+        status = 'PENDING';
 
-      // ❌ Nội dung độc hại
-      if (label === 'toxic' || toxicScore >= threshold) {
-        return {
-          success: false,
-          message: 'Nội dung bài post chứa từ ngữ độc hại! Vui lòng chỉnh sửa.',
-          toxicScore,
-          topic,
-        };
+        // Nếu text sạch nhưng ảnh vi phạm
+        if (!aiReason) {
+          aiReason = imageAiReason ?? 'AI detected sensitive image content';
+        }
       }
     } catch (error) {
-      console.error('❌ Error calling ML API:', error.message);
-      return {
-        success: false,
-        message: 'Không thể kiểm duyệt nội dung lúc này. Vui lòng thử lại!',
-      };
+      // ❗ FAIL-SAFE
+      status = 'PENDING';
+      aiFlag = true;
+      aiReason = 'AI moderation service unavailable';
     }
 
-    let status: 'APPROVED' | 'PENDING' = 'APPROVED';
-
+    // =========================
+    // 2. CHECK COMMUNITY (GIỮ NGUYÊN LOGIC CŨ)
+    // =========================
     if (communityId) {
       const community = await this.communityModel.findById(communityId);
 
@@ -92,7 +113,7 @@ export class PostsService {
 
       if (community.visibility === 'PRIVATE') {
         const isAdmin = community.admins.map(String).includes(String(user._id));
-        status = isAdmin ? 'APPROVED' : 'PENDING';
+        status = isAdmin ? status : 'PENDING';
       }
 
       if (status === 'APPROVED') {
@@ -103,9 +124,9 @@ export class PostsService {
       }
     }
 
-    /* =======================================
-     * 🔥 3. TẠO POST
-     * ======================================= */
+    // =========================
+    // 3. LUÔN TẠO POST
+    // =========================
     const newPost = await this.postModel.create({
       namePost,
       content,
@@ -115,17 +136,27 @@ export class PostsService {
       communityId,
       status,
 
-      // 👉 (OPTIONAL) lưu topic để lọc bài viết
-      topic: 'unknown', // hoặc gán từ ML nếu bạn muốn
+      // ===== AI INFO =====
+      aiScore: toxicScore,
+      aiFlag,
+      aiReason,
+
+      topic: 'unknown', // có thể gán topic từ AI sau
 
       createdBy: {
         _id: user._id,
         email: user.email,
       },
     });
+
     const spamResult = await this.detectSpam(user._id.toString(), content);
+
     return {
       success: true,
+      message:
+        status === 'PENDING'
+          ? 'Tạo bài viết thành công, Phát hiện nội dung nhạy cảm, Bài viết đang chờ admin duyệt'
+          : 'Đăng bài thành công',
       post: newPost,
       spam: spamResult,
     };
@@ -161,6 +192,8 @@ export class PostsService {
 
     // ⭐ LOẠI BỎ bài viết thuộc cộng đồng (community)
     filter.$or = [{ communityId: null }, { communityId: { $exists: false } }];
+    filter.status = 'APPROVED';
+    filter.isDeleted = false;
 
     // ⭐ xử lý sort
     let sortObj: Record<string, SortOrder>;
@@ -946,5 +979,44 @@ export class PostsService {
       .limit(5);
 
     return { users, posts };
+  }
+
+  // posts.service.ts
+  async findPendingPosts() {
+    return this.postModel
+      .find({
+        status: 'PENDING',
+        isDeleted: false,
+        $or: [{ communityId: { $exists: false } }, { communityId: null }],
+      })
+      .populate('userId', 'name email avatar')
+      .sort({ createdAt: -1 })
+      .lean();
+  }
+
+  // posts.service.ts
+  async reviewPost(postId: string, dto: ReviewPostDto, admin: IUser) {
+    const post = await this.postModel.findById(postId);
+    if (!post) {
+      throw new NotFoundException('Post không tồn tại');
+    }
+
+    if (dto.action === 'APPROVE') {
+      post.status = 'APPROVED';
+    }
+
+    if (dto.action === 'REJECT') {
+      post.status = 'REJECTED';
+    }
+
+    if (dto.action === 'DELETE') {
+      post.isDeleted = true;
+      post.deletedAt = new Date();
+    }
+
+    post.updatedAt = new Date();
+    await post.save();
+
+    return { success: true };
   }
 }

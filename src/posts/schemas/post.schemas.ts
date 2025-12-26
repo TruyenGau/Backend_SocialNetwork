@@ -90,6 +90,16 @@ export class Post {
     default: 'NORMAL',
   })
   postType: 'NORMAL' | 'BIRTHDAY';
+
+  // ===== AI MODERATION =====
+  @Prop({ type: Number, default: null })
+  aiScore?: number;
+
+  @Prop({ type: Boolean, default: false })
+  aiFlag?: boolean;
+
+  @Prop({ type: String, default: null })
+  aiReason?: string;
 }
 
 export const PostSchema = SchemaFactory.createForClass(Post);

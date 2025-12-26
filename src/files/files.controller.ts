@@ -53,6 +53,80 @@ export class FilesController {
   }
 
   // --- Multi (1..N ảnh/video, trộn lẫn) ---
+  // @SkipCheckPermission()
+  // @Public()
+  // @ResponseMessage('upload media (images/videos)')
+  // @Post('upload-media')
+  // @UseInterceptors(FilesInterceptor('media', 20))
+  // async uploadMedia(
+  //   @UploadedFiles() files: Express.Multer.File[],
+  //   @Req() req: Request,
+  // ) {
+  //   if (!files || files.length === 0) {
+  //     return {
+  //       success: false,
+  //       message: 'Không có file nào được upload',
+  //     };
+  //   }
+
+  //   const folderType = (req.headers['folder_type'] as string) ?? 'misc';
+
+  //   const images: string[] = [];
+  //   const videos: string[] = [];
+
+  //   for (const file of files) {
+  //     const isImage = file.mimetype.startsWith('image/');
+  //     const isVideo = file.mimetype.startsWith('video/');
+
+  //     // ======================
+  //     // IMAGE → CHECK AI
+  //     // ======================
+  //     if (isImage) {
+  //       const result = await this.moderationService.checkImage(file.path);
+
+  //       if (!result.is_safe) {
+  //         // ❌ Xoá toàn bộ file đã upload
+  //         for (const f of files) {
+  //           if (fs.existsSync(f.path)) {
+  //             fs.unlinkSync(f.path);
+  //           }
+  //         }
+
+  //         return {
+  //           success: false,
+  //           message:
+  //             result.reason ?? 'Ảnh không hợp lệ theo tiêu chuẩn cộng đồng',
+  //           unsafe_score: result.unsafe_score,
+  //         };
+  //       }
+
+  //       images.push(`uploads/${folderType}/images/${file.filename}`);
+  //     }
+
+  //     // ======================
+  //     // VIDEO
+  //     // ======================
+  //     else if (isVideo) {
+  //       videos.push(`uploads/${folderType}/videos/${file.filename}`);
+  //     }
+
+  //     // ======================
+  //     // FILE KHÁC
+  //     // ======================
+  //     else {
+  //       if (fs.existsSync(file.path)) {
+  //         fs.unlinkSync(file.path);
+  //       }
+  //     }
+  //   }
+
+  //   return {
+  //     success: true,
+  //     images,
+  //     videos,
+  //   };
+  // }
+
   @SkipCheckPermission()
   @Public()
   @ResponseMessage('upload media (images/videos)')
@@ -74,6 +148,11 @@ export class FilesController {
     const images: string[] = [];
     const videos: string[] = [];
 
+    // 🔑 FLAG TỔNG
+    let aiFlag = false;
+    let aiReason: string | null = null;
+    let unsafeScore: number | null = null;
+
     for (const file of files) {
       const isImage = file.mimetype.startsWith('image/');
       const isVideo = file.mimetype.startsWith('video/');
@@ -84,23 +163,13 @@ export class FilesController {
       if (isImage) {
         const result = await this.moderationService.checkImage(file.path);
 
-        if (!result.is_safe) {
-          // ❌ Xoá toàn bộ file đã upload
-          for (const f of files) {
-            if (fs.existsSync(f.path)) {
-              fs.unlinkSync(f.path);
-            }
-          }
-
-          return {
-            success: false,
-            message:
-              result.reason ?? 'Ảnh không hợp lệ theo tiêu chuẩn cộng đồng',
-            unsafe_score: result.unsafe_score,
-          };
-        }
-
         images.push(`uploads/${folderType}/images/${file.filename}`);
+
+        if (!result.is_safe) {
+          aiFlag = true;
+          aiReason = result.reason ?? 'Image flagged by AI';
+          unsafeScore = result.unsafe_score ?? null;
+        }
       }
 
       // ======================
@@ -124,8 +193,12 @@ export class FilesController {
       success: true,
       images,
       videos,
+      aiFlag,
+      aiReason,
+      unsafe_score: unsafeScore,
     };
   }
+
   //adfdfdd
   // @SkipCheckPermission()
   // @Public()
