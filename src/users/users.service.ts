@@ -22,6 +22,8 @@ import {
   SpamWarning,
   SpamWarningDocument,
 } from './schemas/spam-warning.schema';
+import * as crypto from 'crypto';
+import { MailService } from './mail.service';
 @Injectable()
 export class UsersService {
   constructor(
@@ -35,6 +37,7 @@ export class UsersService {
 
     @InjectModel(SpamWarning.name)
     private spamWarningModel: SoftDeleteModel<SpamWarningDocument>,
+    private readonly mailService: MailService,
   ) {}
 
   getHashPassword = (password: string) => {
@@ -479,6 +482,62 @@ export class UsersService {
     return {
       total: warnings.length,
       warnings,
+    };
+  }
+  async forgotPassword(email: string) {
+    const user = await this.userModel.findOne({ email });
+
+    // ❗ KHÔNG LỘ EMAIL CÓ TỒN TẠI HAY KHÔNG
+    if (!user) {
+      return {
+        success: true,
+        message:
+          'Nếu email tồn tại trong hệ thống, link đặt lại mật khẩu đã được gửi.',
+      };
+    }
+
+    // 🔐 TẠO TOKEN
+    const token = crypto.randomBytes(32).toString('hex');
+
+    user.resetPasswordToken = token;
+    user.resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 phút
+
+    await user.save();
+
+    const resetLink = `${process.env.FRONTEND_URL}/auth/reset?token=${token}`;
+
+    await this.mailService.sendResetPasswordMail(user.email, resetLink);
+
+    return {
+      success: true,
+      message: 'Link đặt lại mật khẩu đã được gửi về email.',
+    };
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    const user = await this.userModel.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: new Date() },
+    });
+
+    if (!user) {
+      return {
+        success: false,
+        message: 'Token không hợp lệ hoặc đã hết hạn.',
+      };
+    }
+
+    user.password = this.getHashPassword(newPassword);
+
+    // ❌ XOÁ TOKEN SAU KHI DÙNG
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
+
+    await user.save();
+
+    return {
+      success: true,
+      message: 'Đặt lại mật khẩu thành công.',
     };
   }
 }

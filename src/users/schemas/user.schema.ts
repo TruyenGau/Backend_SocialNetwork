@@ -119,6 +119,12 @@ export class User {
 
   @Prop()
   deletedAt: Date;
+
+  @Prop({ default: null, index: true })
+  resetPasswordToken: string;
+
+  @Prop({ type: Date, default: null })
+  resetPasswordExpires: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

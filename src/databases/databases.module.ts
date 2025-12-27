@@ -15,10 +15,11 @@ import {
   SpamWarning,
   SpamWarningSchema,
 } from 'src/users/schemas/spam-warning.schema';
+import { MailService } from 'src/users/mail.service';
 
 @Module({
   controllers: [DatabasesController],
-  providers: [DatabasesService, UsersService],
+  providers: [DatabasesService, UsersService, MailService],
   imports: [
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },

@@ -7,6 +7,7 @@ import { Role, RoleSchema } from 'src/roles/schema/role.schema';
 import { Follow, FollowSchema } from 'src/follows/schemas/follow.schemas';
 import { Action, ActionSchema } from './schemas/actions.schema';
 import { SpamWarning, SpamWarningSchema } from './schemas/spam-warning.schema';
+import { MailService } from './mail.service';
 
 @Module({
   imports: [
@@ -19,7 +20,7 @@ import { SpamWarning, SpamWarningSchema } from './schemas/spam-warning.schema';
     ]),
   ],
   controllers: [UsersController],
-  providers: [UsersService],
+  providers: [UsersService, MailService],
   exports: [UsersService], // Export UsersService to be used in other modules
 })
 export class UsersModule {}
