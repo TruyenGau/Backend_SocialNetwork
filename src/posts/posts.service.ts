@@ -50,7 +50,7 @@ export class PostsService {
       images = [],
       videos = [],
 
-      // 🔥 NHẬN AI FLAG TỪ ẢNH
+      // 🔥 AI FLAG TỪ IMAGE
       aiFlag: imageAiFlag,
       aiReason: imageAiReason,
     } = createPostDto;
@@ -58,13 +58,23 @@ export class PostsService {
     const TOXIC_THRESHOLD = 0.55;
 
     // =========================
-    // 1. AI MODERATION
+    // 1. INIT STATE
     // =========================
     let toxicScore = 0;
     let aiFlag = false;
     let aiReason: string | null = null;
     let status: 'APPROVED' | 'PENDING' = 'APPROVED';
 
+    // 🔥 QUAN TRỌNG: LÝ DO PENDING
+    let pendingReason:
+      | 'AI_TOXIC'
+      | 'PRIVATE_COMMUNITY'
+      | 'AI_SERVICE_DOWN'
+      | null = null;
+
+    // =========================
+    // 2. AI TEXT + IMAGE MODERATION
+    // =========================
     try {
       const aiRes = await axios.post('http://36.50.135.249:5000/moderation', {
         text: content,
@@ -72,34 +82,36 @@ export class PostsService {
 
       toxicScore = aiRes.data?.toxic_score ?? 0;
       const label: string = aiRes.data?.label;
-      const topic: string = aiRes.data?.topic;
 
+      // ----- TEXT TOXIC -----
       if (label === 'toxic' || toxicScore >= TOXIC_THRESHOLD) {
         status = 'PENDING';
         aiFlag = true;
         aiReason = 'AI detected potentially toxic content';
+        pendingReason = 'AI_TOXIC';
       }
-      // =========================
-      // 🔥 GỘP AI IMAGE
-      // =========================
-      if (imageAiFlag) {
-        aiFlag = true;
-        status = 'PENDING';
 
-        // Nếu text sạch nhưng ảnh vi phạm
+      // ----- IMAGE TOXIC -----
+      if (imageAiFlag) {
+        status = 'PENDING';
+        aiFlag = true;
+
         if (!aiReason) {
           aiReason = imageAiReason ?? 'AI detected sensitive image content';
         }
+
+        pendingReason = 'AI_TOXIC';
       }
     } catch (error) {
       // ❗ FAIL-SAFE
       status = 'PENDING';
       aiFlag = true;
       aiReason = 'AI moderation service unavailable';
+      pendingReason = 'AI_SERVICE_DOWN';
     }
 
     // =========================
-    // 2. CHECK COMMUNITY (GIỮ NGUYÊN LOGIC CŨ)
+    // 3. CHECK COMMUNITY
     // =========================
     if (communityId) {
       const community = await this.communityModel.findById(communityId);
@@ -111,11 +123,21 @@ export class PostsService {
         };
       }
 
+      // 🔒 PRIVATE COMMUNITY
       if (community.visibility === 'PRIVATE') {
         const isAdmin = community.admins.map(String).includes(String(user._id));
-        status = isAdmin ? status : 'PENDING';
+
+        if (!isAdmin) {
+          status = 'PENDING';
+
+          // ⚠️ CHỈ GÁN NẾU KHÔNG PHẢI DO AI
+          if (!pendingReason) {
+            pendingReason = 'PRIVATE_COMMUNITY';
+          }
+        }
       }
 
+      // CHỈ TĂNG COUNT NẾU ĐƯỢC DUYỆT
       if (status === 'APPROVED') {
         await this.communityModel.updateOne(
           { _id: communityId },
@@ -125,7 +147,7 @@ export class PostsService {
     }
 
     // =========================
-    // 3. LUÔN TẠO POST
+    // 4. CREATE POST (LUÔN TẠO)
     // =========================
     const newPost = await this.postModel.create({
       namePost,
@@ -141,7 +163,7 @@ export class PostsService {
       aiFlag,
       aiReason,
 
-      topic: 'unknown', // có thể gán topic từ AI sau
+      topic: 'unknown',
 
       createdBy: {
         _id: user._id,
@@ -149,14 +171,44 @@ export class PostsService {
       },
     });
 
+    // =========================
+    // 5. SPAM CHECK
+    // =========================
     const spamResult = await this.detectSpam(user._id.toString(), content);
 
+    // =========================
+    // 6. MESSAGE CHUẨN NGỮ NGHĨA
+    // =========================
+    let message = 'Đăng bài thành công';
+
+    if (status === 'PENDING') {
+      switch (pendingReason) {
+        case 'AI_TOXIC':
+          message =
+            'Tạo bài viết thành công. Nội dung có dấu hiệu nhạy cảm, đang chờ admin duyệt.';
+          break;
+
+        case 'PRIVATE_COMMUNITY':
+          message =
+            'Tạo bài viết thành công. Nhóm riêng tư yêu cầu admin duyệt bài.';
+          break;
+
+        case 'AI_SERVICE_DOWN':
+          message =
+            'Tạo bài viết thành công. Hệ thống AI đang tạm ngưng, bài viết chờ admin duyệt.';
+          break;
+
+        default:
+          message = 'Bài viết đang chờ admin duyệt.';
+      }
+    }
+
+    // =========================
+    // 7. RESPONSE
+    // =========================
     return {
       success: true,
-      message:
-        status === 'PENDING'
-          ? 'Tạo bài viết thành công, Phát hiện nội dung nhạy cảm, Bài viết đang chờ admin duyệt'
-          : 'Đăng bài thành công',
+      message,
       post: newPost,
       spam: spamResult,
     };
