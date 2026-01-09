@@ -507,7 +507,7 @@ export class PostsService {
     delete filter.pageSize;
 
     filter.userId = userId;
-
+    filter.status = 'APPROVED';
     const page = Math.max(Number(currentPage) || 1, 1);
     const pageSize = Math.max(Number(limit) || 10, 1);
     const skip = (page - 1) * pageSize;
